@@ -1,6 +1,6 @@
 {
   "name": "dsh-codex-plugins",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Codex plugin bridge for DeepSeek Harness: load Codex hooks and plugin MCP servers with the session sandbox policy.",
   "type": "module",
   "main": "lib/index.js",
@@ -43,6 +43,7 @@
   ],
   "scripts": {
     "check": "node --check lib/index.js && node --check vendor/dsh-hooks-claude-code/lib/index.js && node --check vendor/dsh-hook-protocol/lib/index.js",
+    "test": "node scripts/test.mjs",
     "install": "node scripts/install.mjs"
   },
   "dependencies": {

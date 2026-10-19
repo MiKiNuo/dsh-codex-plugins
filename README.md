@@ -1,22 +1,39 @@
 # dsh-codex-plugins
 
-在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）中加载 Codex 插件的 **hooks** 和 **插件 MCP**。
+在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）中加载 Codex 的 **hooks** 和 **MCP server**。不用在配置里逐个列插件：它读取 Codex 自己的配置，自动发现你已启用的插件和 MCP。
 
-它把 Codex 用户 hook 和已安装插件声明的 hooks 合并成一个桥，统一带入当前会话的沙箱策略执行；同时启动 Codex 插件声明的 stdio MCP server。这样不会再把 DSH 安装目录误当成可写工作区。
+它把 Codex 用户 hook 和各插件声明的 hooks 合并成一个桥，统一带入当前会话的沙箱策略执行；同时按声明启动 stdio / streamable-http MCP server。这样不会再把 DSH 安装目录误当成可写工作区。
+
+## 自动发现
+
+每次 DSH 启动时，插件从 `CODEX_HOME`（默认 `~/.codex`）读取：
+
+- `hooks.json`：Codex 用户 hook。
+- `config.toml` 的 `[plugins."name@marketplace"]`：只加载 `enabled = true` 的插件。
+- `config.toml` 的 `[mcp_servers.*]`：全局 MCP server（stdio 和 streamable-http）。
+- `plugins/cache/<marketplace>/<plugin>/<version>`：每个已启用插件的最新版本，从其 `.codex-plugin/plugin.json` 读取 `hooks` 和 `mcpServers` 声明。
+  - 默认跳过 `openai-*` 内置 marketplace（Codex 自带工具）；需要时用 `includeBundledPlugins` 打开。
+  - 跳过带 `CODEX_WINDOWS_REGISTERED_CORE` 的 Codex 自管 REPL（如 `node_repl`）。
+  - 没有声明时回退到 `.codex-plugin/hooks.json`、`hooks/codex-hooks.json`、`hooks/hooks.json` 和 `.codex-plugin/mcp.json`、`mcp.json`。
+  - MCP 条目 `enabled = false` 的会跳过。
+- `env_vars` 会把同名环境变量传入 MCP 进程；`bearer_token_env_var` 会转成 `Authorization: Bearer`。
+
+已经在 DSH 里存在的 MCP server（工具名前缀 `mcp__<name>__` 或 DSH 连接器里已启用）会被跳过，避免重名。
 
 ## 支持范围
 
-- Codex 用户 hook：`~/.codex/hooks.json`
+自动发现适用于 Codex 的插件缓存格式，已实测：
+
 - [context-mode](https://github.com/mksglu/context-mode)：hooks + MCP
 - [ponytail](https://github.com/DietrichGebert/ponytail)：hooks
 - [i-have-adhd](https://github.com/ayghri/i-have-adhd)：hooks
 - [pstack](https://github.com/michael-denyer/pstack-claude)：hooks
 
-插件从 `CODEX_HOME`（默认 `~/.codex`）下的 `plugins/cache/<marketplace>/<plugin>/<version>` 自动选择最新版本。
+任何使用 `.codex-plugin/plugin.json` 声明 hooks/MCP 的插件都应可用。
 
 ## 安装
 
-要求：DSH Desktop 0.2.1-rc.2 或更新；Codex 和上述插件已经安装。
+要求：DSH Desktop 0.2.1-rc.2 或更新；Codex 已安装，且至少有一个 Codex 插件或 MCP server。
 
 ```powershell
 git clone https://github.com/MiKiNuo/dsh-codex-plugins.git F:\MiKiNuoProjects\dsh-codex-plugins
@@ -29,23 +46,39 @@ node F:\MiKiNuoProjects\dsh-codex-plugins\scripts\install.mjs --dsh-home "D:\Pro
 
 ## 配置
 
-安装后的配置在 [codex-plugins.json](./codex-plugins.json)：
+默认配置 [codex-plugins.json](./codex-plugins.json) 只需要打开自动发现：
 
 ```json
 {
-  "codexHome": "C:/Users/you/.codex",
-  "runtimeRoot": "D:/DSH/runtime/dsh/0.2.1-rc.2",
+  "autoDiscover": true,
+  "includeGlobalMcp": true
+}
+```
+
+可选项：
+
+| 字段 | 默认 | 作用 |
+| --- | --- | --- |
+| `codexHome` | `CODEX_HOME` 或 `~/.codex` | Codex 数据目录 |
+| `runtimeRoot` | 自动查找 | 带 `dsh-mcp-client` 的 DSH runtime 版本目录 |
+| `autoDiscover` | `true` | 关掉后只加载 `suites` |
+| `includeGlobalMcp` | `true` | 是否加载 `config.toml` 的 `[mcp_servers.*]` |
+| `includeBundledPlugins` | `false` | 是否加载 `openai-*` marketplace 的内置插件 |
+| `mcpExclude` | `[]` | 不加载的 MCP server 名，例如 `["node_repl"]` |
+| `mcpStartupTimeoutMs` | `15000` | 单个 MCP server 的连接等待上限，超时后继续启动 DSH |
+| `skipExistingMcp` | `true` | 跳过 DSH 里已有的同名 MCP server |
+| `suites` | `[]` | 手动指定插件，优先于自动发现；同名项会覆盖自动结果 |
+
+手动指定示例（一般不需要）：
+
+```json
+{
   "suites": [
     { "name": "user", "hooks": "hooks.json" },
     { "name": "context-mode", "marketplace": "context-mode", "plugin": "context-mode", "hooks": ".codex-plugin/hooks.json", "mcp": true }
   ]
 }
 ```
-
-- `codexHome` 省略时使用 `CODEX_HOME` 或 `~/.codex`。
-- `runtimeRoot` 省略时自动在 DSH 数据目录的 `runtime/dsh` 中查找带 `dsh-mcp-client` 的最新版本。
-- `suites` 中不存在的插件会被跳过并写日志，不会阻塞 DSH 启动。
-- 需要更多 Codex 插件时，按同样格式加一项即可。
 
 ## 从市场套件切换
 
@@ -55,6 +88,9 @@ node F:\MiKiNuoProjects\dsh-codex-plugins\scripts\install.mjs --dsh-home "D:\Pro
 
 - DSH 的 Claude hook 桥没有 `PreCompact` 事件；Codex 的 `PreCompact` hook 会被跳过。
 - Codex 的 tool matcher 会映射到 DSH 的工具名（如 `ops_bash`、`run_code`、`read`），但个别插件脚本仍可能假定 Codex 的原始工具名。
+- `config.toml` 只解析插件/MCP 需要的子集：表头、字符串、布尔、数字、单行数组和行内表。多行数组会被跳过。
+- Codex 自管的服务（如 `node_repl`）按环境标记跳过；单独需要时用 `suites` 手动加回。
+- `includeBundledPlugins` 打开后，Codex 内置插件的 MCP 如果带 `enabled = true` 也会被加载。
 - 这是 host 插件，不是 Agent 套件；它不会出现在左侧“插件”市场页。
 - hooks 和 MCP 命令以你的用户权限执行；只安装你信任的 Codex 插件。
 
@@ -62,6 +98,7 @@ node F:\MiKiNuoProjects\dsh-codex-plugins\scripts\install.mjs --dsh-home "D:\Pro
 
 ```bash
 npm run check
+npm test
 ```
 
 ## 许可证

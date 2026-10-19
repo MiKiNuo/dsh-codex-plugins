@@ -28,7 +28,7 @@ try {
   const found = versions.find(v => fs.existsSync(path.join(runtime, v, 'node_modules', '@deepseek-ai', 'dsh-llm')));
   if (found) runtimeRoot = path.join(runtime, found);
 } catch {}
-for (const name of ['dsh-llm', 'schemastery']) {
+for (const name of ['dsh-llm', 'schemastery', 'dsh-mcp-client']) {
   const from = path.join(runtimeRoot, 'node_modules', '@deepseek-ai', name);
   const to = path.join(project, 'node_modules', '@deepseek-ai', name);
   if (!fs.existsSync(from)) continue;
