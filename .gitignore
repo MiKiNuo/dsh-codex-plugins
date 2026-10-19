@@ -1,0 +1,6 @@
+node_modules/
+generated/
+mcp-debug.txt
+*.log
+.DS_Store
+*.tgz

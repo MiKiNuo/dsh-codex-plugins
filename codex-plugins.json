@@ -1,0 +1,33 @@
+{
+  "suites": [
+    {
+      "name": "user",
+      "hooks": "hooks.json"
+    },
+    {
+      "name": "context-mode",
+      "marketplace": "context-mode",
+      "plugin": "context-mode",
+      "hooks": ".codex-plugin/hooks.json",
+      "mcp": true
+    },
+    {
+      "name": "ponytail",
+      "marketplace": "ponytail",
+      "plugin": "ponytail",
+      "hooks": "hooks/claude-codex-hooks.json"
+    },
+    {
+      "name": "i-have-adhd",
+      "marketplace": "i-have-adhd",
+      "plugin": "i-have-adhd",
+      "hooks": "hooks/hooks.json"
+    },
+    {
+      "name": "pstack",
+      "marketplace": "pstack-claude",
+      "plugin": "pstack",
+      "hooks": "hooks/hooks.json"
+    }
+  ]
+}

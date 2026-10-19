@@ -1,0 +1,57 @@
+{
+  "name": "dsh-codex-plugins",
+  "version": "0.1.0",
+  "description": "Codex plugin bridge for DeepSeek Harness: load Codex hooks and plugin MCP servers with the session sandbox policy.",
+  "type": "module",
+  "main": "lib/index.js",
+  "icon": "./icon.svg",
+  "license": "MIT",
+  "author": {
+    "name": "MiKiNuo",
+    "url": "https://github.com/MiKiNuo"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MiKiNuo/dsh-codex-plugins.git"
+  },
+  "homepage": "https://github.com/MiKiNuo/dsh-codex-plugins",
+  "bugs": {
+    "url": "https://github.com/MiKiNuo/dsh-codex-plugins/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "codex",
+    "hooks",
+    "mcp",
+    "plugin"
+  ],
+  "engines": {
+    "dsh": ">=0.2.1-rc.2",
+    "node": "^22.19 || >=24"
+  },
+  "files": [
+    "lib",
+    "vendor",
+    "cordis.patch.yml",
+    "codex-plugins.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "scripts"
+  ],
+  "scripts": {
+    "check": "node --check lib/index.js && node --check vendor/dsh-hooks-claude-code/lib/index.js && node --check vendor/dsh-hook-protocol/lib/index.js",
+    "install": "node scripts/install.mjs"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-llm": "0.2.1-rc.2",
+    "@deepseek-ai/schemastery": "~3.18.5"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
