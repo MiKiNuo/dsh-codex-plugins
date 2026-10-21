@@ -152,6 +152,8 @@ function apply(ctx, config) {
 		return;
 	}
 	const detached = createDetachedRuns();
+	// DSH can create one agent several times for the same session; inject each distinct context once.
+	const sessionStartSeen = /* @__PURE__ */ new Map();
 	const subagentChildren = /* @__PURE__ */ new Map();
 	ctx.effect(() => () => detached.drain(), "hooks-claude-code: drain detached hook runs");
 	/**
@@ -171,7 +173,7 @@ function apply(ctx, config) {
 		const projectDir = config.projectDir ?? workdir;
 		const hookEnv = {
 			...(projectDir !== void 0 ? { CLAUDE_PROJECT_DIR: projectDir } : {}),
-			...(config.pluginRoot !== void 0 ? { CLAUDE_PLUGIN_ROOT: config.pluginRoot, PLUGIN_ROOT: config.pluginRoot, CODEX_PLUGIN_ROOT: config.pluginRoot, PLUGIN_DATA: config.pluginRoot.replace(/[\\/]+$/, '') + '/.dsh-plugin-data' } : {})
+			...(config.pluginRoot !== void 0 ? { CLAUDE_PLUGIN_ROOT: config.pluginRoot, PLUGIN_ROOT: config.pluginRoot, CODEX_PLUGIN_ROOT: config.pluginRoot, CODEX_HOME: config.pluginRoot, PLUGIN_DATA: config.pluginRoot.replace(/[\\/]+$/, '') + '/.dsh-plugin-data' } : {})
 		};
 		for (const group of groups) for (const hook of group.hooks) {
 			const handlerId = nextHandlerId(point);
@@ -232,7 +234,12 @@ function apply(ctx, config) {
 			signal: ownerSignal
 		}).then((merged) => {
 			const context = contextFrom(merged);
-			if (context) agent.inject(context);
+			if (!context) return;
+			const key = agent.session.header.id;
+			const signature = JSON.stringify(context.content.map((block) => block.text).sort());
+			if (lastTurn(ctx, agent) === 0 && sessionStartSeen.get(key) === signature) return;
+			sessionStartSeen.set(key, signature);
+			agent.inject(context);
 		}).catch((error) => {
 			ctx.logger.warn(`hooks-claude-code: SessionStart hook failed: ${String(error)}`);
 		});

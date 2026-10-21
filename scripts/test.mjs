@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { discoverSuites, globalMcpConfigs, readCodexToml } from '../lib/index.js';
+import { discoverSuites, globalMcpConfigs, mapToolMatcher, readCodexToml } from '../lib/index.js';
+import { parseHookOutput } from '../vendor/dsh-hook-protocol/lib/index.js';
 
 const root = mkdtempSync(path.join(os.tmpdir(), 'codex-plugins-test-'));
 const codexHome = path.join(root, '.codex');
@@ -72,6 +73,16 @@ assert.equal(servers[0].env.A, '1');
 assert.equal(servers[0].env.HOME_PATH, '/tmp/home');
 assert.equal(servers[1].transport, 'streamable-http');
 assert.equal(servers[1].headers.Authorization, 'Bearer secret');
+
+assert.equal(parseHookOutput(0, '<EXTREMELY_IMPORTANT>pstack</EXTREMELY_IMPORTANT>', '', 'SessionStart').additionalContext, '<EXTREMELY_IMPORTANT>pstack</EXTREMELY_IMPORTANT>');
+assert.equal(parseHookOutput(0, 'plain prompt context', '', 'UserPromptSubmit').additionalContext, 'plain prompt context');
+assert.equal(parseHookOutput(0, 'noise', '', 'PreToolUse').additionalContext, undefined);
+assert.equal(parseHookOutput(0, '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"json"}}', '', 'SessionStart').additionalContext, 'json');
+
+const mapped = mapToolMatcher('ctx_execute|ctx_execute_file|mcp__');
+assert.equal(mapped.includes('mcp__context-mode__mcp__context-mode__'), false);
+assert.equal(mapped.includes('mcp__context-mode__ctx_execute|'), true);
+assert.equal(mapped.includes('mcp__context-mode__ctx_execute_file'), true);
 
 rmSync(root, { recursive: true, force: true });
 console.log('discovery test ok');

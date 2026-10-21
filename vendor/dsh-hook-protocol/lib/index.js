@@ -130,6 +130,9 @@ function parseHookOutput(exitCode, stdout, stderr, expectedEventName) {
 				parsed = void 0;
 			}
 			if (parsed) applyStructured(output, parsed, expectedEventName);
+		} else if (trimmedOut.length > 0 && (expectedEventName === "SessionStart" || expectedEventName === "UserPromptSubmit")) {
+			// Codex plugins (pstack, ponytail) emit model context as plain stdout on these points.
+			output.additionalContext = trimmedOut;
 		}
 	}
 	return output;
